@@ -11,18 +11,20 @@ model User {
   id           Int           @id @default(autoincrement())
   email        String        @unique
   password     String
-  categories   Category[]
-  transactions Transaction[]
-  Account      Account[]
+  name         String?
+  createdAt    DateTime      @default(now())
+  accounts     Account[]     @relation("UserAccounts")
+  transactions Transaction[] @relation("UserTransactions")
+  categories   Category[]    @relation("UserCategories")
 }
 
 model Account {
   id           Int           @id @default(autoincrement())
   name         String
   balance      Float         @default(0)
-  user         User          @relation(fields: [userId], references: [id])
   userId       Int
-  transactions Transaction[]
+  user         User          @relation("UserAccounts", fields: [userId], references: [id])
+  transactions Transaction[] @relation("AccountTransactions")
 }
 
 model Category {
@@ -30,20 +32,20 @@ model Category {
   name         String
   type         String
   userId       Int?
-  user         User?         @relation(fields: [userId], references: [id])
-  transactions Transaction[]
+  user         User?          @relation("UserCategories", fields: [userId], references: [id])
+  transactions Transaction[]  @relation("CategoryTransactions")
 }
 
 model Transaction {
-  id          Int       @id @default(autoincrement())
+  id          Int        @id @default(autoincrement())
   amount      Float
   date        DateTime
   description String?
-  account     Account   @relation(fields: [accountId], references: [id])
   accountId   Int
-  category    Category? @relation(fields: [categoryId], references: [id])
   categoryId  Int?
-  user        User      @relation(fields: [userId], references: [id])
   userId      Int
-  createdAt   DateTime  @default(now())
+  createdAt   DateTime   @default(now())
+  account     Account    @relation("AccountTransactions", fields: [accountId], references: [id])
+  category    Category?  @relation("CategoryTransactions", fields: [categoryId], references: [id])
+  user        User       @relation("UserTransactions", fields: [userId], references: [id])
 }
