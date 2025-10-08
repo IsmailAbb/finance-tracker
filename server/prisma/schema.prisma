@@ -25,15 +25,19 @@ model Account {
   userId       Int
   user         User          @relation("UserAccounts", fields: [userId], references: [id])
   transactions Transaction[] @relation("AccountTransactions")
+
+  @@unique([userId, name])
 }
 
 model Category {
   id           Int           @id @default(autoincrement())
-  name         String
+  name         String        
   type         String
   userId       Int?
   user         User?          @relation("UserCategories", fields: [userId], references: [id])
   transactions Transaction[]  @relation("CategoryTransactions")
+
+  @@unique([userId, name, type])
 }
 
 model Transaction {

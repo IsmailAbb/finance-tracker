@@ -4,6 +4,9 @@ import cookieParser from "cookie-parser";
 import dotenv from "dotenv";
 import authRoutes from "./routes/auth";
 import transactionRoutes from "./routes/transactions";
+import categoryRoutes from "./routes/categories";
+import userRoutes from "./routes/users";
+import accountRoutes from "./routes/accounts";
 
 dotenv.config();
 
@@ -16,6 +19,9 @@ app.use(cookieParser());
 
 app.use("/auth", authRoutes);
 app.use("/transactions", transactionRoutes);
+app.use("/categories", categoryRoutes);
+app.use("/users", userRoutes);
+app.use("/accounts", accountRoutes);
 
 app.get("/", (req, res) => res.json({ msg: "Test" }));
 

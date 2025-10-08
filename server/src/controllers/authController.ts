@@ -3,6 +3,7 @@ import jwt from "jsonwebtoken";
 import bcrypt from "bcrypt";
 import { PrismaClient } from "@prisma/client";
 import dotenv from "dotenv";
+import { createDefaultCategories, createDefaultAccount } from "../defaultData";
 
 dotenv.config();
 const prisma = new PrismaClient();
@@ -17,6 +18,8 @@ export const register = async (req: Request, res: Response)=> {
 
         const hashedPassword = await bcrypt.hash(password, 10);
         const user = await prisma.user.create({data:{email, password:hashedPassword, name}});
+        await createDefaultCategories(user.id);
+        await createDefaultAccount(user.id);
         const token = jwt.sign({userId: user.id}, JWT_SECRET, {expiresIn: "1h"});
         return res.status(201).json({token, user:{id:user.id, email:user.email, name:user.name}});
     }
@@ -36,7 +39,7 @@ export const login = async (req: Request, res: Response)=> {
         if(!passwordVerification) return res.status(400).json("incorrect email or password");
         
         const token = jwt.sign({userId: user.id}, JWT_SECRET, {expiresIn: "1h"});
-        return res.status(201).json({token, user:{id:user.id, email:user.email, name:user.name}});
+        return res.status(200).json({token, user:{id:user.id, email:user.email, name:user.name}});
 
     }
     catch(err){
