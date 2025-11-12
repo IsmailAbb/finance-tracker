@@ -20,10 +20,10 @@ export default function Register() {
 
     return (
         <form onSubmit={handleSubmit} className="flex flex-col gap-2 max-w-sm mx-auto mt-10">
-            <input type="text" placeholder="Name" value={name} onChange={ e => setEmail(e.target.value)}/>
+            <input type="text" placeholder="Name" value={name} onChange={ e => setName(e.target.value)}/>
             <input type="email" placeholder="Email" value={email} onChange={ e => setEmail(e.target.value)}/>
             <input type="password" placeholder="Password" value={password} onChange={ e => setPassword(e.target.value)}/>
-            <button type="submit">Login</button>
+            <button type="submit">Register</button>
         </form>
     );
 }
