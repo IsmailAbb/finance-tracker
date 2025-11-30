@@ -28,20 +28,31 @@ export default function Dashboard() {
     return (
     <div className="p-6">
         <h1 className="text-xl font-semibold mb-4">Dashboard</h1>
-        <IncomeExpenseChart transactions={transactions} />
-        <table className="mt-6 border-collapse w-full">
+        <IncomeExpenseChart 
+            transactions={transactions} 
+            options={{
+                responsive: true,
+                plugins: {
+                    legend: { position: "bottom" },
+                },
+            }}
+        />
+        <table className="w-full text-left border-collapse">
             <thead>
-                <tr>
-                    <th>Date</th><th>Description</th><th>Category</th><th>Amount</th>
+                <tr className="bg-gray-100">
+                    <th className="p-2">Date</th>
+                    <th className="p-2">Description</th>
+                    <th className="p-2">Category</th>
+                    <th className="p-2">Amount</th>
                 </tr>
             </thead>
             <tbody>
                 {transactions.map(tx => (
-                    <tr key={tx.id}>
-                        <td>{new Date(tx.date).toLocaleDateString()}</td>
-                        <td>{tx.description}</td>
-                        <td>{tx.category?.name || "Uncategorized"}</td>
-                        <td>{tx.amount}</td>
+                    <tr key={tx.id} className="border-b hover:bg-gray-50">
+                        <td className="p-2">{new Date(tx.date).toLocaleDateString()}</td>
+                        <td className="p-2">{tx.description}</td>
+                        <td className="p-2">{tx.category?.name || "Uncategorized"}</td>
+                        <td className="p-2">{tx.amount}</td>
                     </tr>
                 ))}
             </tbody>

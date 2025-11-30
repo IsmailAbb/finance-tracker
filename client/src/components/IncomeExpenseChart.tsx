@@ -5,9 +5,10 @@ ChartJS.register(ArcElement, Tooltip, Legend);
 
 interface Props {
     transactions: { amount: number; category: { type: string } | null }[];
+    options?: any;
 }
 
-export default function IncomeExpenseChart({ transactions }: Props) {
+export default function IncomeExpenseChart({ transactions, options}: Props) {
     const income = transactions.filter(tx => tx.category?.type === "income").reduce((sum, tx) => sum + tx.amount, 0);
     const expense = transactions.filter(tx => tx.category?.type === "expense").reduce((sum, tx) => sum + tx.amount, 0);
     const data = {
@@ -19,5 +20,5 @@ export default function IncomeExpenseChart({ transactions }: Props) {
         }],
     };
     
-    return <Pie data={data} />;
+    return <Pie data={data} options={options} />;
 }

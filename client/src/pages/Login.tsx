@@ -18,10 +18,10 @@ export default function Login() {
 
 
     return (
-        <form onSubmit={handleSubmit} className="flex flex-col gap-2 max-w-sm mx-auto mt-10">
-            <input type="email" placeholder="Email" value={email} onChange={ e => setEmail(e.target.value)}/>
-            <input type="password" placeholder="Password" value={password} onChange={ e => setPassword(e.target.value)}/>
-            <button type="submit">Login</button>
+        <form onSubmit={handleSubmit} className="max-w-md mx-auto mt-20 p-6 bg-white rounded-lg shadow-md">
+            <input type="email" placeholder="Email" value={email} onChange={ e => setEmail(e.target.value)} className="w-full p-3 mb-4 border border-gray-300 rounded"/>
+            <input type="password" placeholder="Password" value={password} onChange={ e => setPassword(e.target.value)} className="w-full p-3 mb-4 border border-gray-300 rounded"/>
+            <button className="w-full p-3 bg-blue-500 text-white rounded hover:bg-blue-600" type="submit">Login</button>
         </form>
     );
 }
