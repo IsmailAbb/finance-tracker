@@ -40,3 +40,8 @@
 .read-the-docs {
   color: #888;
 }
+
+.recharts-surface:focus,
+.recharts-surface:focus-visible {
+  outline: none !important;
+}

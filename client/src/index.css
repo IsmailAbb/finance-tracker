@@ -1,3 +1,50 @@
+@import "flowbite/dist/flowbite.css";
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+
+.recharts-bar-rectangle rect {
+    fill: #3B82F6 !important;
+}
+
+/* Remove black focus outline that appears on Recharts SVG when clicked */
+.recharts-wrapper:focus,
+.recharts-wrapper svg:focus,
+.recharts-surface:focus,
+.recharts-rectangle:focus,
+.recharts-rectangle rect:focus {
+    outline: none !important;
+    box-shadow: none !important;
+    stroke: none !important;
+}
+
+/* Remove stroke/outline on rectangles as well */
+.recharts-rectangle rect,
+.recharts-rectangle rect:focus {
+    stroke: none !important;
+}
+
+.recharts-bar-rectangle {
+    pointer-events: auto;
+}
+
+.recharts-bar-rectangle * {
+    pointer-events: none;
+}
+
+/* Remove focus outline from pie slices */
+.recharts-sector:focus,
+.recharts-sector:focus-visible,
+.recharts-sector path:focus,
+.recharts-sector path:focus-visible {
+    outline: none !important;
+    stroke: none !important;
+    filter: none !important;
+}
+
+/* Ensure no stroke is added on active slice */
+.recharts-pie-sector {
+    stroke: none !important;
+}
