@@ -1,38 +1,44 @@
-import { api, setAuthToken } from "./api";
+import { api, setAuthToken, writeStoredToken } from "./api";
+import type { User } from "../types";
 
-export const register = async (data: { email: String; password: String; name?: String }) => {
-    const res = await api.post("/auth/register", data);
-    const { token } = res.data || {};
-    if (token) {
-        try {
-            localStorage.setItem("token", token);
-        } catch (err) {
-            
-        }
-        setAuthToken(token);
-    }
-    return res.data;
-};
+type AuthResponse = { token: string; user: User };
 
-export const login = async (data: { email: String; password: String }) => {
-    const res = await api.post("/auth/login", data);
-    const { token } = res.data || {};
-    if (token) {
-        try {
-            localStorage.setItem("token", token);
-        } catch (err) {
-            // ignore storage errors
-        }
-        setAuthToken(token);
-    }
-    return res.data;
-};
+export async function register(data: { email: string; password: string; name?: string }): Promise<AuthResponse> {
+  const res = await api.post<AuthResponse>("/auth/register", data);
+  writeStoredToken(res.data.token);
+  setAuthToken(res.data.token);
+  return res.data;
+}
 
-export const logout = () => {
-    try {
-        localStorage.removeItem("token");
-    } catch (err) {
-        // ignore
-    }
-    setAuthToken(null);
-};
+export async function login(data: { email: string; password: string }): Promise<AuthResponse> {
+  const res = await api.post<AuthResponse>("/auth/login", data);
+  writeStoredToken(res.data.token);
+  setAuthToken(res.data.token);
+  return res.data;
+}
+
+export function logout() {
+  writeStoredToken(null);
+  setAuthToken(null);
+}
+
+export async function changePassword(data: { currentPassword: string; newPassword: string }) {
+  const res = await api.post("/auth/change-password", data);
+  return res.data;
+}
+
+export async function fetchMe(): Promise<User> {
+  const res = await api.get<User>("/users/me");
+  return res.data;
+}
+
+export async function updateMe(
+  data: Partial<Pick<User, "email" | "name" | "currency" | "timezone" | "weekStartsOn">>
+): Promise<User> {
+  const res = await api.patch<User>("/users/me", data);
+  return res.data;
+}
+
+export async function deleteMe(): Promise<void> {
+  await api.delete("/users/me");
+}

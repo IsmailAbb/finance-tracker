@@ -1,50 +1,39 @@
-@import "flowbite/dist/flowbite.css";
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-
-.recharts-bar-rectangle rect {
-    fill: #3B82F6 !important;
+@layer base {
+  body {
+    @apply font-sans text-gray-900 antialiased bg-gray-50 dark:bg-gray-950 dark:text-gray-100;
+  }
+  html.dark {
+    color-scheme: dark;
+  }
+  /* Hide the spinner arrows on number inputs across browsers. */
+  input[type="number"]::-webkit-outer-spin-button,
+  input[type="number"]::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+  input[type="number"] {
+    -moz-appearance: textfield;
+    appearance: textfield;
+  }
 }
 
-/* Remove black focus outline that appears on Recharts SVG when clicked */
+/* Remove default focus outlines on Recharts SVG interactions */
 .recharts-wrapper:focus,
 .recharts-wrapper svg:focus,
 .recharts-surface:focus,
 .recharts-rectangle:focus,
-.recharts-rectangle rect:focus {
-    outline: none !important;
-    box-shadow: none !important;
-    stroke: none !important;
-}
-
-/* Remove stroke/outline on rectangles as well */
-.recharts-rectangle rect,
-.recharts-rectangle rect:focus {
-    stroke: none !important;
-}
-
-.recharts-bar-rectangle {
-    pointer-events: auto;
-}
-
-.recharts-bar-rectangle * {
-    pointer-events: none;
-}
-
-/* Remove focus outline from pie slices */
 .recharts-sector:focus,
-.recharts-sector:focus-visible,
-.recharts-sector path:focus,
-.recharts-sector path:focus-visible {
-    outline: none !important;
-    stroke: none !important;
-    filter: none !important;
+.recharts-sector:focus-visible {
+  outline: none !important;
+  stroke: none !important;
 }
 
-/* Ensure no stroke is added on active slice */
 .recharts-pie-sector {
-    stroke: none !important;
+  stroke: none !important;
 }
