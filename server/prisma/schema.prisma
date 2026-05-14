@@ -8,48 +8,55 @@ generator client {
 }
 
 model User {
-  id           Int           @id @default(autoincrement())
-  email        String        @unique
-  password     String
-  name         String?
-  createdAt    DateTime      @default(now())
-  accounts     Account[]     @relation("UserAccounts")
-  transactions Transaction[] @relation("UserTransactions")
-  categories   Category[]    @relation("UserCategories")
+  id            Int           @id @default(autoincrement())
+  email         String        @unique
+  password      String
+  name          String?
+  currency      String        @default("USD")
+  timezone      String        @default("UTC")
+  weekStartsOn  Int           @default(0) // 0 = Sunday, 1 = Monday, ..., 6 = Saturday
+  createdAt     DateTime      @default(now())
+  accounts      Account[]     @relation("UserAccounts")
+  transactions  Transaction[] @relation("UserTransactions")
+  categories    Category[]    @relation("UserCategories")
 }
 
 model Account {
-  id           Int           @id @default(autoincrement())
-  name         String
-  balance      Float         @default(0)
-  userId       Int
-  user         User          @relation("UserAccounts", fields: [userId], references: [id])
-  transactions Transaction[] @relation("AccountTransactions")
+  id             Int           @id @default(autoincrement())
+  name           String
+  initialBalance Float         @default(0)
+  userId         Int
+  user           User          @relation("UserAccounts", fields: [userId], references: [id], onDelete: Cascade)
+  transactions   Transaction[] @relation("AccountTransactions")
 
   @@unique([userId, name])
 }
 
 model Category {
   id           Int           @id @default(autoincrement())
-  name         String        
+  name         String
   type         String
-  userId       Int?
-  user         User?          @relation("UserCategories", fields: [userId], references: [id])
-  transactions Transaction[]  @relation("CategoryTransactions")
+  color        String?
+  userId       Int
+  user         User          @relation("UserCategories", fields: [userId], references: [id], onDelete: Cascade)
+  transactions Transaction[] @relation("CategoryTransactions")
 
   @@unique([userId, name, type])
+  @@unique([userId, type, color])
 }
 
 model Transaction {
-  id          Int        @id @default(autoincrement())
+  id          Int       @id @default(autoincrement())
   amount      Float
   date        DateTime
   description String?
   accountId   Int
   categoryId  Int?
   userId      Int
-  createdAt   DateTime   @default(now())
-  account     Account    @relation("AccountTransactions", fields: [accountId], references: [id])
-  category    Category?  @relation("CategoryTransactions", fields: [categoryId], references: [id])
-  user        User       @relation("UserTransactions", fields: [userId], references: [id])
+  createdAt   DateTime  @default(now())
+  account     Account   @relation("AccountTransactions", fields: [accountId], references: [id], onDelete: Cascade)
+  category    Category? @relation("CategoryTransactions", fields: [categoryId], references: [id], onDelete: SetNull)
+  user        User      @relation("UserTransactions", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, date])
 }

@@ -1,46 +1,47 @@
-import {Request, Response} from "express";
-import {PrismaClient} from "@prisma/client";
+import { Request, Response } from "express";
+import { z } from "zod";
+import { prisma } from "../prisma";
+import { asyncHandler, stripUndefined } from "../utils/asyncHandler";
+import { notFound } from "../utils/errors";
 
-const prisma = new PrismaClient();
+const userSelect = {
+  id: true,
+  email: true,
+  name: true,
+  currency: true,
+  timezone: true,
+  weekStartsOn: true,
+  createdAt: true,
+} as const;
 
-export const getUser = async (req: Request, res:Response)=>{
-    const userId = (req as any).userId; 
+const updateSchema = z.object({
+  email: z.string().trim().toLowerCase().email().max(254).optional(),
+  name: z.string().trim().min(1).max(100).nullable().optional(),
+  currency: z.string().trim().length(3).toUpperCase().optional(),
+  timezone: z.string().trim().min(1).max(100).optional(),
+  weekStartsOn: z.number().int().min(0).max(6).optional(),
+});
 
-    try{
-    const user = await prisma.user.findUnique({where:{id:userId}, include:{accounts:true, transactions:true, categories:true}});
-    if (!user) return res.status(404).json({ message: "User not found" });
-    res.status(200).json(user);
-    }
-    catch(err){
-        res.status(500).json({error:err});
-    }
-};
+export const getUser = asyncHandler(async (req: Request, res: Response) => {
+  const user = await prisma.user.findUnique({
+    where: { id: req.userId! },
+    select: userSelect,
+  });
+  if (!user) throw notFound("User not found");
+  res.status(200).json(user);
+});
 
-export const updateUser = async (req: Request, res:Response)=>{
-    const {email, password, name} = req.body;
-    const userId = (req as any).userId;
+export const updateUser = asyncHandler(async (req: Request, res: Response) => {
+  const data = updateSchema.parse(req.body);
+  const updated = await prisma.user.update({
+    where: { id: req.userId! },
+    data: stripUndefined(data),
+    select: userSelect,
+  });
+  res.status(200).json(updated);
+});
 
-    try{
-    const user = await prisma.user.findUnique({where:{id:userId}});
-    if (!user) return res.status(404).json({message:"User not found"});
-    const updatedUser = await prisma.user.update({where:{id:userId}, data:{email, password, name}});
-    res.status(200).json(updatedUser);
-    }
-    catch(err){
-        res.status(500).json({error:err});
-    }
-};
-
-export const deleteUser = async (req: Request, res:Response)=>{
-    const userId = (req as any).userId;  
-
-    try{
-    const user = await prisma.user.findUnique({where:{id:userId}});
-    if (!user) return res.status(404).json({message:"User not found"});
-    await prisma.user.delete({where:{id:userId}});
-    res.status(200).json({message:"User deleted successfully"});
-    }
-    catch(err){
-        res.status(500).json({error:err});
-    }
-};
+export const deleteUser = asyncHandler(async (req: Request, res: Response) => {
+  await prisma.user.delete({ where: { id: req.userId! } });
+  res.status(200).json({ message: "User deleted" });
+});

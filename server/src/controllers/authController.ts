@@ -1,48 +1,100 @@
-import {Request, Response} from "express";
-import jwt from "jsonwebtoken";
+import { Request, Response } from "express";
 import bcrypt from "bcrypt";
-import { PrismaClient } from "@prisma/client";
-import dotenv from "dotenv";
+import { z } from "zod";
+import { prisma } from "../prisma";
+import { signToken } from "../utils/jwt";
+import { badRequest, conflict, unauthorized } from "../utils/errors";
+import { asyncHandler, stripUndefined } from "../utils/asyncHandler";
 import { createDefaultCategories, createDefaultAccount } from "../defaultData";
 
-dotenv.config();
-const prisma = new PrismaClient();
-const JWT_SECRET = process.env.JWT_SECRET || "Text";
+const emailField = z
+  .string()
+  .trim()
+  .toLowerCase()
+  .email()
+  .max(254);
 
-export const register = async (req: Request, res: Response)=> {
-    const {email, password, name} = req.body;
+const passwordField = z.string().min(8, "Password must be at least 8 characters").max(200);
 
-    try{
-        const userExists = await prisma.user.findUnique({where:{email}});
-        if (userExists) return res.status(400).json({message:"user already exists"});
+const registerSchema = z.object({
+  email: emailField,
+  password: passwordField,
+  name: z.string().trim().min(1).max(100).optional(),
+});
 
-        const hashedPassword = await bcrypt.hash(password, 10);
-        const user = await prisma.user.create({data:{email, password:hashedPassword, name}});
-        await createDefaultCategories(user.id);
-        await createDefaultAccount(user.id);
-        const token = jwt.sign({userId: user.id}, JWT_SECRET, {expiresIn: "1h"});
-        return res.status(201).json({token, user:{id:user.id, email:user.email, name:user.name}});
-    }
-    catch(err){
-        res.status(500).json({error:err});
-    }
-};
+const loginSchema = z.object({
+  email: emailField,
+  password: z.string().min(1).max(200),
+});
 
-export const login = async (req: Request, res: Response)=> {
-    const {email, password} = req.body;
+function userResponse(u: {
+  id: number;
+  email: string;
+  name: string | null;
+  currency: string;
+  timezone: string;
+  weekStartsOn: number;
+}) {
+  return {
+    id: u.id,
+    email: u.email,
+    name: u.name,
+    currency: u.currency,
+    timezone: u.timezone,
+    weekStartsOn: u.weekStartsOn,
+  };
+}
 
-    try{
-        const user = await prisma.user.findUnique({where:{email}});
-        if (!user) return res.status(400).json({message:"incorrect email or password"});
-        
-        const passwordVerification = await bcrypt.compare(password, user.password);
-        if(!passwordVerification) return res.status(400).json("incorrect email or password");
-        
-        const token = jwt.sign({userId: user.id}, JWT_SECRET, {expiresIn: "1h"});
-        return res.status(200).json({token, user:{id:user.id, email:user.email, name:user.name}});
+export const register = asyncHandler(async (req: Request, res: Response) => {
+  const { email, password, name } = registerSchema.parse(req.body);
 
-    }
-    catch(err){
-        res.status(500).json({error:err});
-    }
-};
+  const exists = await prisma.user.findUnique({ where: { email } });
+  if (exists) throw conflict("Email already registered");
+
+  const hashed = await bcrypt.hash(password, 10);
+  const user = await prisma.user.create({
+    data: stripUndefined({ email, password: hashed, name }) as {
+      email: string; password: string; name?: string;
+    },
+  });
+
+  await createDefaultCategories(user.id);
+  await createDefaultAccount(user.id);
+
+  const token = signToken({ userId: user.id });
+  res.status(201).json({ token, user: userResponse(user) });
+});
+
+export const login = asyncHandler(async (req: Request, res: Response) => {
+  const { email, password } = loginSchema.parse(req.body);
+
+  const user = await prisma.user.findUnique({ where: { email } });
+  if (!user) throw unauthorized("Incorrect email or password");
+
+  const ok = await bcrypt.compare(password, user.password);
+  if (!ok) throw unauthorized("Incorrect email or password");
+
+  const token = signToken({ userId: user.id });
+  res.status(200).json({ token, user: userResponse(user) });
+});
+
+const passwordSchema = z.object({
+  currentPassword: z.string().min(1).max(200),
+  newPassword: passwordField,
+});
+
+export const changePassword = asyncHandler(async (req: Request, res: Response) => {
+  const userId = req.userId!;
+  const { currentPassword, newPassword } = passwordSchema.parse(req.body);
+
+  const user = await prisma.user.findUnique({ where: { id: userId } });
+  if (!user) throw unauthorized();
+
+  const ok = await bcrypt.compare(currentPassword, user.password);
+  if (!ok) throw badRequest("Current password is incorrect");
+
+  const hashed = await bcrypt.hash(newPassword, 10);
+  await prisma.user.update({ where: { id: userId }, data: { password: hashed } });
+
+  res.status(200).json({ message: "Password updated" });
+});

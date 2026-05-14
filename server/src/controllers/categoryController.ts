@@ -1,60 +1,79 @@
-import {Request, Response} from "express";
-import {PrismaClient} from "@prisma/client";
+import { Request, Response } from "express";
+import { z } from "zod";
+import { prisma } from "../prisma";
+import { asyncHandler, stripUndefined } from "../utils/asyncHandler";
+import { badRequest, conflict, notFound } from "../utils/errors";
 
-const prisma = new PrismaClient();
+const typeEnum = z.enum(["income", "expense"]);
+const colorHex = z.string().regex(/^#[0-9a-fA-F]{6}$/, "Color must be a hex string like #aabbcc");
 
-export const createCategory = async (req: Request, res:Response)=>{
-    const {name, type} = req.body;
-    const userId = (req as any).userId;
+const createSchema = z.object({
+  name: z.string().trim().min(1).max(50),
+  type: typeEnum,
+  color: colorHex.nullable().optional(),
+});
 
-    try{
-        const category = await prisma.category.create({data:{name, type, userId}});
-        res.status(201).json(category);
-    }
-    catch(err){
-        res.status(500).json({error:err});
-    }
-};
+const updateSchema = z.object({
+  name: z.string().trim().min(1).max(50).optional(),
+  type: typeEnum.optional(),
+  color: colorHex.nullable().optional(),
+});
 
-export const getCategories = async (req: Request, res:Response)=>{
-    const userId = (req as any).userId; 
+function parseId(raw: string | undefined) {
+  const id = Number(raw);
+  if (!Number.isInteger(id) || id <= 0) throw badRequest("Invalid id");
+  return id;
+}
 
-    try{
-    const categories = await prisma.category.findMany({where:{userId:userId}, include:{user:true, transactions:true}, orderBy:{name:"desc"}});
-    res.status(200).json(categories);
-    }
-    catch(err){
-        res.status(500).json({error:err});
-    }
-};
+/** True if another category of the same user+type already uses this color. */
+async function colorTaken(userId: number, type: string, color: string, excludeId?: number) {
+  const existing = await prisma.category.findFirst({
+    where: { userId, type, color, ...(excludeId !== undefined && { NOT: { id: excludeId } }) },
+    select: { id: true },
+  });
+  return !!existing;
+}
 
-export const updateCategory = async (req: Request, res:Response)=>{
-    const {name, type} = req.body;
-    const userId = (req as any).userId;
-    const {id} = req.params;
+export const getCategories = asyncHandler(async (req: Request, res: Response) => {
+  const categories = await prisma.category.findMany({
+    where: { userId: req.userId! },
+    orderBy: [{ type: "asc" }, { name: "asc" }],
+  });
+  res.status(200).json(categories);
+});
 
-    try{
-        const category = await prisma.category.findFirst({where:{id:Number(id), userId}});
-        if (!category) return res.status(404).json({message:"Category not found"});
-        const updatedCategory = await prisma.category.update({where:{id:Number(id)},data:{name, type}});
-        res.status(200).json(updatedCategory);
-    }
-    catch(err){
-        res.status(500).json({error:err});
-    }
-};
+export const createCategory = asyncHandler(async (req: Request, res: Response) => {
+  const data = createSchema.parse(req.body);
+  if (data.color && (await colorTaken(req.userId!, data.type, data.color))) {
+    throw conflict("That color is already used by another category");
+  }
+  const category = await prisma.category.create({
+    data: stripUndefined({ ...data, userId: req.userId! }) as { name: string; type: "income" | "expense"; userId: number; color?: string | null },
+  });
+  res.status(201).json(category);
+});
 
-export const deleteCategory = async (req: Request, res:Response)=>{
-    const userId = (req as any).userId;  
-    const {id} = req.params;
+export const updateCategory = asyncHandler(async (req: Request, res: Response) => {
+  const id = parseId(req.params.id);
+  const data = updateSchema.parse(req.body);
 
-    try{
-        const category = await prisma.category.findFirst({where:{id:Number(id), userId}});
-        if (!category) return res.status(404).json({message:"Category not found"});
-        await prisma.category.delete({where:{id:Number(id)}});
-        res.status(200).json({message:"Category deleted successfully"});
-    }
-    catch(err){
-        res.status(500).json({error:err});
-    }
-};
+  const existing = await prisma.category.findFirst({ where: { id, userId: req.userId! } });
+  if (!existing) throw notFound("Category not found");
+
+  // If changing color, ensure no other category of the resulting type uses it.
+  const nextType = data.type ?? existing.type;
+  if (data.color && (await colorTaken(req.userId!, nextType, data.color, id))) {
+    throw conflict("That color is already used by another category");
+  }
+
+  const updated = await prisma.category.update({ where: { id }, data: stripUndefined(data) });
+  res.status(200).json(updated);
+});
+
+export const deleteCategory = asyncHandler(async (req: Request, res: Response) => {
+  const id = parseId(req.params.id);
+  const existing = await prisma.category.findFirst({ where: { id, userId: req.userId! } });
+  if (!existing) throw notFound("Category not found");
+  await prisma.category.delete({ where: { id } });
+  res.status(200).json({ message: "Category deleted" });
+});
