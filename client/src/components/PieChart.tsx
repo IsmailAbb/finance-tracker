@@ -1,107 +1,133 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import {
-    PieChart as RePieChart,
-    Pie,
-    Cell,
-    Tooltip,
-    ResponsiveContainer,
+  PieChart as RePieChart, Pie, Cell, Tooltip, ResponsiveContainer, Legend,
 } from "recharts";
+import { useTransactions, useCategories } from "../hooks/useResources";
+import Skeleton from "./Skeleton";
+import { categoryBreakdown } from "../utils/analytics";
+import { formatCurrency } from "../utils/format";
+import { useAuth } from "../auth/AuthContext";
+import { useTheme } from "../theme/ThemeContext";
+import YearSelect from "./YearSelect";
+import { FALLBACK_COLOR } from "../constants/colors";
+import { parseISO } from "date-fns";
 
-const COLORS = ["#0f766e", "#5eead4", "#99f6e4", "#134e4a"];
-const MONTHS = ["Jan", "Feb", "March", "April", "May", "June",
-                "July", "August", "Sept", "Oct", "Nov", "Dec",
-                "Full Year",
-] as const;
-const YEARS = ["2023", "2024", "2025", "2026"];
+const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec", "Full Year"] as const;
+type MonthChoice = typeof MONTHS[number];
+type Filter = "Expenses" | "Income" | "All";
 
-const TRANSACTIONTYPE = ["Expenses", "Income", "All"] as const;
+export default function CategoryPieChart() {
+  const { user } = useAuth();
+  const { theme } = useTheme();
+  const currency = user?.currency || "USD";
+  const { data: transactions = [], isLoading } = useTransactions();
+  const { data: categories = [] } = useCategories();
 
-type ChartEntry = { name: string; value: number };
+  const isDark = theme === "dark";
+  const tooltipBg = isDark ? "#111827" : "#ffffff";
+  const tooltipBorder = isDark ? "#374151" : "#e5e7eb";
+  const tooltipText = isDark ? "#f3f4f6" : "#111827";
+  const legendColor = isDark ? "#d1d5db" : "#6b7280";
 
-type MonthlyData = {[month in typeof MONTHS[number]]: ChartEntry[];};
+  const [month, setMonth] = useState<MonthChoice>("Full Year");
+  const [year, setYear] = useState<number>(new Date().getFullYear());
+  const [filter, setFilter] = useState<Filter>("All");
 
-type TransactionData = {[transaction in typeof TRANSACTIONTYPE[number]]: MonthlyData;};
+  // Years: from earliest transaction year through current year (descending).
+  const years = useMemo(() => {
+    const current = new Date().getFullYear();
+    let earliest = current;
+    for (const t of transactions) {
+      const y = parseISO(t.date).getFullYear();
+      if (y < earliest) earliest = y;
+    }
+    const out: number[] = [];
+    for (let y = current; y >= earliest; y--) out.push(y);
+    return out.length > 0 ? out : [current];
+  }, [transactions]);
 
-type YearlyData = {[year in typeof YEARS[number]]: TransactionData;};
+  const data = useMemo(() => {
+    const monthIdx = month === "Full Year" ? undefined : MONTHS.indexOf(month);
+    const type = filter === "Expenses" ? "expense" : filter === "Income" ? "income" : "all";
+    return categoryBreakdown(transactions, { year, monthIdx, type });
+  }, [transactions, month, year, filter]);
 
-export default function PieChart() {
-const [month, setMonth] = useState<typeof MONTHS[number]>("Full Year");
-const [year, setYear] = useState<typeof YEARS[number]>("2024");
-const [transaction, setTransaction] = useState<typeof TRANSACTIONTYPE[number]>("Expenses");
-const chartData =  [{ name: 'Apples', value: 400 },
-                    { name: 'Bananas', value: 300 },
-                    { name: 'Cherries', value: 200 },
-                    { name: 'Dates', value: 100 },
-                    ];
+  // Map category name → color (so slice colors match the Settings palette).
+  const colorByName = useMemo(() => {
+    const m = new Map<string, string>();
+    for (const c of categories) if (c.color) m.set(c.name, c.color);
+    return m;
+  }, [categories]);
 
-return (
-    <div className="w-full h-full bg-neutral-primary-soft border border-default rounded-base shadow-xs p-4 md:p-6">
-      {/* Header */}
-        <div className="flex flex-wrap items-center gap-2 mb-4">
-            <h5 className="text-xl font-semibold text-heading mr-3">
-                Summary
-            </h5>
-
-        {/* Month Dropdown */}
+  return (
+    <div className="w-full h-full bg-white dark:bg-gray-900 rounded-xl p-4 md:p-6">
+      <div className="flex flex-wrap items-center gap-2 mb-4">
+        <h5 className="text-lg font-semibold mr-2 dark:text-gray-100">Summary</h5>
         <select
-            value={month}
-            onChange={(e) => setMonth(e.target.value as typeof MONTHS[number])}
-            className="text-sm rounded-lg border border-gray-300 bg-white px-2 py-1 focus:outline-none focus:ring-2 focus:ring-primary-500"
+          value={month}
+          onChange={(e) => setMonth(e.target.value as MonthChoice)}
+          className="text-sm rounded-lg border border-gray-300 bg-white dark:bg-gray-800 dark:border-gray-700 dark:text-gray-100 px-2 py-1 focus:outline-none"
         >
-            {MONTHS.map((m) => (<option key={m} value={m}>{m}</option>))}
+          {MONTHS.map((m) => <option key={m} value={m}>{m}</option>)}
         </select>
-
-        {/* Year Dropdown */}
+        <YearSelect value={year} years={years} onChange={setYear} />
         <select
-            value={year}
-            onChange={(e) => setYear(e.target.value as typeof YEARS[number])}
-            className="text-sm rounded-lg border border-gray-300 bg-white px-2 py-1 focus:outline-none focus:ring-2 focus:ring-primary-500"
+          value={filter}
+          onChange={(e) => setFilter(e.target.value as Filter)}
+          className="text-sm rounded-lg border border-gray-300 bg-white dark:bg-gray-800 dark:border-gray-700 dark:text-gray-100 px-2 py-1 focus:outline-none"
         >
-            {YEARS.map((y) => (<option key={y} value={y}>{y}</option>))}
+          <option value="All">All</option>
+          <option value="Expenses">Expenses</option>
+          <option value="Income">Income</option>
         </select>
+      </div>
 
-        {/* Transaction Dropdown */}
-        <select
-            value={transaction}
-            onChange={(e) => setTransaction(e.target.value as typeof TRANSACTIONTYPE[number])}
-            className="text-sm rounded-lg border border-gray-300 bg-white px-2 py-1 focus:outline-none focus:ring-2 focus:ring-primary-500"
-        >
-            {TRANSACTIONTYPE.map((t) => (<option key={t} value={t}>{t}</option>))}
-        </select>
-    </div>
-
-    {/* Chart */}
-    <div className="w-full h-[260px]">
-        <ResponsiveContainer key={month + year + transaction} width="100%" height="100%">
+      <div className="w-full h-[260px]">
+        {isLoading ? (
+          <div className="h-full flex items-center justify-center">
+            <Skeleton className="w-44 h-44 rounded-full" />
+          </div>
+        ) : data.length === 0 ? (
+          <div className="h-full flex items-center justify-center text-sm text-gray-400 dark:text-gray-500">
+            No transactions in this range
+          </div>
+        ) : (
+          <ResponsiveContainer key={`${month}-${year}-${filter}`} width="100%" height="100%">
             <RePieChart>
-                <Pie
-                    data={chartData}
-                    dataKey="value"
-                    nameKey="name"
-                    cx="50%"
-                    cy="50%"
-                    outerRadius={90}
-                    innerRadius={55}
-                    paddingAngle={2}
-                >
-                    {chartData.map((_, index) => (
-                    <Cell
-                        key={index}
-                        fill={COLORS[index % COLORS.length]}
-                    />
-                    ))}
-                </Pie>
-
-                <Tooltip
-                    formatter={(value: number) => value}
-                    contentStyle={{
-                    borderRadius: "8px",
-                    border: "1px solid #e5e7eb",
-                    }}
-                />
+              <Pie
+                data={data}
+                dataKey="value"
+                nameKey="name"
+                cx="50%"
+                cy="50%"
+                outerRadius={90}
+                innerRadius={55}
+                paddingAngle={2}
+              >
+                {data.map((slice, i) => (
+                  <Cell key={i} fill={colorByName.get(slice.name) ?? FALLBACK_COLOR} />
+                ))}
+              </Pie>
+              <Tooltip
+                formatter={(value) => formatCurrency(Number(value ?? 0), currency)}
+                contentStyle={{
+                  borderRadius: 8,
+                  border: `1px solid ${tooltipBorder}`,
+                  background: tooltipBg,
+                  color: tooltipText,
+                }}
+                itemStyle={{ color: tooltipText }}
+                labelStyle={{ color: tooltipText }}
+              />
+              <Legend
+                verticalAlign="bottom"
+                height={36}
+                wrapperStyle={{ fontSize: 12, color: legendColor }}
+              />
             </RePieChart>
-        </ResponsiveContainer>
+          </ResponsiveContainer>
+        )}
+      </div>
     </div>
-    </div>
-    );
+  );
 }
