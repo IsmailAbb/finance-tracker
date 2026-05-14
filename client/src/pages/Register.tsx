@@ -3,6 +3,7 @@ import { useNavigate, Link } from "react-router-dom";
 import { Eye, EyeOff } from "lucide-react";
 import { register } from "../services/auth";
 import { useAuth } from "../auth/AuthContext";
+import Logo from "../components/Logo";
 
 export default function Register() {
   const [email, setEmail] = useState("");
@@ -39,6 +40,9 @@ export default function Register() {
   return (
     <div className="min-h-screen w-screen flex bg-white dark:bg-gray-950">
       <div className="flex-[2] flex flex-col items-center justify-center p-6 sm:p-12 relative">
+        <div className="absolute top-6 left-6">
+          <Logo />
+        </div>
         <div className="w-full max-w-xs">
           <h1 className="text-2xl xl:text-3xl font-bold text-left dark:text-gray-100">Sign Up</h1>
           <p className="text-s xl:text-m mb-8 text-left dark:text-gray-400">Start Spending Wisely</p>
