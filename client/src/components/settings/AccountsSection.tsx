@@ -137,10 +137,14 @@ function AccountForm({
       </Field>
       <Field label={`Initial balance (${currency})`}>
         <input
-          type="number"
-          step="0.01"
+          type="text"
+          inputMode="decimal"
           value={initialBalance}
-          onChange={(e) => setInitialBalance(e.target.value)}
+          onChange={(e) => {
+            const v = e.target.value;
+            // Allow optional leading minus, optional digits, optional dot, up to 2 decimals.
+            if (v === "" || v === "-" || /^-?\d*\.?\d{0,2}$/.test(v)) setInitialBalance(v);
+          }}
           className={inputCls}
         />
       </Field>

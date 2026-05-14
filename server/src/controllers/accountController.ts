@@ -4,14 +4,22 @@ import { prisma } from "../prisma";
 import { asyncHandler, stripUndefined } from "../utils/asyncHandler";
 import { badRequest, notFound } from "../utils/errors";
 
+const balance = z
+  .number()
+  .finite()
+  .refine(
+    (v) => Math.round(v * 100) === v * 100,
+    "Balance can have at most 2 decimal places"
+  );
+
 const createSchema = z.object({
   name: z.string().trim().min(1).max(100),
-  initialBalance: z.number().finite().optional(),
+  initialBalance: balance.optional(),
 });
 
 const updateSchema = z.object({
   name: z.string().trim().min(1).max(100).optional(),
-  initialBalance: z.number().finite().optional(),
+  initialBalance: balance.optional(),
 });
 
 function parseId(raw: string | undefined) {

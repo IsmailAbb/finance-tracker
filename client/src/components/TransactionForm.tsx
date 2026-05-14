@@ -106,11 +106,15 @@ export default function TransactionForm({ initial, onDone }: Props) {
       <div>
         <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">Amount</label>
         <input
-          type="number"
-          step="0.01"
-          min="0"
+          type="text"
+          inputMode="decimal"
           value={amount}
-          onChange={(e) => setAmount(e.target.value)}
+          onChange={(e) => {
+            const v = e.target.value;
+            // Allow only digits, an optional dot, and up to 2 decimal places.
+            if (v === "" || /^\d*\.?\d{0,2}$/.test(v)) setAmount(v);
+          }}
+          placeholder="0.00"
           className="w-full border border-gray-300 rounded-lg px-3 py-2 bg-white dark:bg-gray-800 dark:border-gray-700 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-primary-200"
         />
       </div>

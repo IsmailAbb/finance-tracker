@@ -4,8 +4,16 @@ import { prisma } from "../prisma";
 import { asyncHandler } from "../utils/asyncHandler";
 import { badRequest, notFound } from "../utils/errors";
 
+const money = z
+  .number()
+  .positive("Amount must be positive")
+  .refine(
+    (v) => Math.round(v * 100) === v * 100,
+    "Amount can have at most 2 decimal places"
+  );
+
 const baseSchema = z.object({
-  amount: z.number().positive("Amount must be positive"),
+  amount: money,
   date: z.string().refine((v) => !Number.isNaN(Date.parse(v)), "Invalid date"),
   description: z.string().trim().max(500).nullable().optional(),
   accountId: z.number().int().positive(),
