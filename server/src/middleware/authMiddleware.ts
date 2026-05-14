@@ -1,23 +1,21 @@
-import {Request, Response, NextFunction} from "express";
-import jwt from "jsonwebtoken";
-import dotenv from "dotenv";
+import { Request, Response, NextFunction } from "express";
+import { verifyToken } from "../utils/jwt";
+import { unauthorized } from "../utils/errors";
 
-dotenv.config();
-const JWT_SECRET = process.env.JWT_SECRET || "Text";
+export const authenticate = (req: Request, _res: Response, next: NextFunction) => {
+  const authHeader = req.headers.authorization;
+  if (!authHeader) return next(unauthorized("Missing authorization header"));
 
-export const authenticate = (req:Request, res:Response, next:NextFunction)=>{
-    const authHeader = req.headers.authorization;
-    if(!authHeader) return res.status(401).json({message:"request missing authorization header"});
-    
-    const token = authHeader.split(" ")[1];
-    if (!token) return res.status(401).json({ message: "No token provided" });
+  const [scheme, token] = authHeader.split(" ");
+  if (scheme !== "Bearer" || !token) {
+    return next(unauthorized("Malformed authorization header"));
+  }
 
-    try{
-        const payload = jwt.verify(token, JWT_SECRET) as unknown as {userId: number};
-        (req as any).userId = payload.userId;
-        next();
-    }
-    catch(err){
-        res.status(500).json({error:err});
-    }
+  try {
+    const payload = verifyToken(token);
+    req.userId = payload.userId;
+    next();
+  } catch {
+    next(unauthorized("Invalid or expired token"));
+  }
 };
